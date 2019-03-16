@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{pagetitle}}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+<style>
+    body, html {
+          height: 100%;
+          margin: 0;
+          font-family: Arial, Helvetica, sans-serif;
+    }
+
+    * {
+          box-sizing: border-box;
+    }
+
+    .bg-image {
+        /* The image used */
+        background-image: url("{{ imageurl }}");
+
+        /* Add the blur effect */
+        filter: blur(8px);
+        -webkit-filter: blur(8px);
+
+        /* Full height */
+        height: 100%; 
+
+        /* Center and scale the image nicely */
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    /* Position text in the middle of the page/image */
+    .bg-text {
+        /*background-color: rgb(0,0,0);*/
+        /*background-color: rgba(0,0,0, 0.4);*/
+        /*color: white;*/
+        /*text-shadow: 0px 0px 12px #000000;*/
+        /*font-weight: bold;*/
+        /*border: 2px solid #000000;*/
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2;
+        width: 60%;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .maintxt {
+        color: white;
+        font-weight: bold;
+        filter: drop-shadow(0 0 20px black);
+        mix-blend-mode: difference
+    }
+
+    .timage {
+        max-height:100%;
+        height:auto;
+        width:auto;
+    }
+
+    .ce {
+        text-align: center;
+    }
+
+</style>
+</head>
+
+<body>
+
+
+    <div style="width: 100%; height: 100%; overflow: hidden">
+        <img src="{{ imageurl }}" width="100%" height="100%">
+    </div>
+
+    <!--<div class="bg-image"></div>
+
+    <div class="bg-text">
+        <img class="timage" src="{{ imageurl }}" alt="Image">
+        <h3 class="maintxt">{{ tweet }}</h3>	
+    </div>-->
+
+</body>
+</html>
+
