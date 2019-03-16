@@ -2,9 +2,11 @@ import json
 import tweepy
 import subprocess
 
+from datetime import datetime
 from flask import Flask, render_template
 
 auth_data_path = "/home/pi/Scarebot-Mentions/auth.json"
+log_data_path = "/home/pi/Scarebot-Mentions/log.json"
 
 class Scraper:
     ''' Class for scraping for scarebot mentions '''
@@ -12,6 +14,9 @@ class Scraper:
     def __init__(self):
         ''' Start the scraper '''
         self.session = self.__get_session()
+        if self.session == None:
+            print("[ERROR] Authed Twitter session could not be made")
+            exit(1)
         self.get_recent_mention()
 
 
@@ -30,15 +35,30 @@ class Scraper:
         except:
             return None
 
+    def __log_mention(self, mention):
+        ''' Log the mention for blame reasons '''
+        try:
+            with open(log_data_path, "r+") as log_file:
+                log_data = json.load(log_file)
+                if not mention.id in log_data:
+                    log_data[mention.id] = (datetime.now(), mention)
+                json.dump(log_data, log_file)
+        except:
+            print("Could not log mention")
+
     def get_recent_mention(self):
         ''' Return the most recent mention image and text '''
-        if not self.session == None:
-            mention = self.session.mentions_timeline(count=1)[0]
-            text = mention.text
-            word_list = text.split()
-            text = ' '.join([i for i in word_list if i != mention.entities["media"][0].get("url")])
-            return mention.entities["media"][0].get("media_url_https"), text
-        return None
+        try:
+            if not self.session == None:
+                mention = self.session.mentions_timeline(count=1)[0]
+                text = mention.text
+                word_list = text.split()
+                text = ' '.join([i for i in word_list if i != mention.entities["media"][0].get("url")])
+                self.__log_mention(mention)
+                return mention.entities["media"][0].get("media_url_https"), text
+        except:
+            print("[ERROR] Most recent mention could not be accessed")
+        exit(1)
 
 app = Flask(__name__)
 pagetitle = "ScareBot"
