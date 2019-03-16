@@ -1,5 +1,6 @@
 import json
 import tweepy
+import subprocess
 
 from flask import Flask, render_template
 
@@ -42,6 +43,8 @@ class Scraper:
 app = Flask(__name__)
 pagetitle = "ScareBot"
 scraper = Scraper()
+
+subprocess.call("./open-firefox.sh", shell=True)
 
 @app.route('/')
 def main():
