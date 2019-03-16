@@ -3,6 +3,7 @@ import tweepy
 import subprocess
 
 from datetime import datetime
+from profanity_filter import ProfanityFilter
 from flask import Flask, render_template
 
 auth_data_path = "/home/pi/Scarebot-Mentions/auth.json"
@@ -63,6 +64,7 @@ class Scraper:
 app = Flask(__name__)
 pagetitle = "ScareBot"
 scraper = Scraper()
+nastyword_filter = ProfanityFilter()
 
 print(" # Starting Scarebot Scraper # ")
 
@@ -71,7 +73,8 @@ subprocess.Popen("./open-firefox.sh")
 @app.route('/')
 def main():
     url, text = scraper.get_recent_mention()
-    return render_template('index.html', imageurl=url, tweet=text, pagetitle=pagetitle)
+    censoredtext = nastyword_filter.censor(text)
+    return render_template('index.html', imageurl=url, tweet=censoredtext, pagetitle=pagetitle)
 
 if __name__ == "__main__":
     app.run()
