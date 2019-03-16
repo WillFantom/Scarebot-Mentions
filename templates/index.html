@@ -42,7 +42,6 @@
         /*font-weight: bold;*/
         /*border: 2px solid #000000;*/
         position: absolute;
-        top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         z-index: 2;
@@ -68,6 +67,13 @@
         text-align: center;
     }
 
+    .footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+
 </style>
 </head>
 
@@ -85,7 +91,7 @@
 
     <div class="bg-image"></div>
 
-    <div class="bg-text">
+    <div class="footer bg-text">
         <!--<img class="timage" src="{{ imageurl }}" alt="Image">-->
         <h3 class="maintxt">{{ tweet }}</h3>	
     </div>
