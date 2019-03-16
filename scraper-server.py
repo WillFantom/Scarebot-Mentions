@@ -44,7 +44,9 @@ app = Flask(__name__)
 pagetitle = "ScareBot"
 scraper = Scraper()
 
-subprocess.call("./open-firefox.sh", shell=True)
+print(" # Starting Scarebot Scraper # ")
+
+subprocess.Popen("./open-firefox.sh")
 
 @app.route('/')
 def main():
