@@ -3,6 +3,8 @@
 Gets the most recent mention of @ScareBot on Twitter. The mentioning tweet is then put on a webpage with its image as the background.
 The webpage (firefox) autostarts with the program in fullscreen and refreshes every 15 seconds.
 
+Also takes mentions that have a color name in english and stores that for another program to use.
+
 ### Requirements
 ```bash
 pip3 install flask                  #For Web Server
