@@ -8,7 +8,7 @@ from datetime import datetime
 from profanity_filter import ProfanityFilter
 from flask import Flask, render_template
 
-config_data_path = "/home/pi/Scarebot-Mentions/config.json"
+config_data_path = "./config.json"
 
 nastyword_filter = ProfanityFilter()
 
@@ -18,25 +18,25 @@ pagetitle = "ScareBot"
 class Scraper:
     ''' Class for scraping for scarebot mentions '''
 
-    def __init__():
+    def __init__(self):
         ''' Create vars for mentions '''
         self.supported_colors = ["red", "green", "blue", "yellow", "pink", "orange", "purple"]
         self.config = self.__get_config(config_data_path)
         self.recent_image = (self.config["def_text"], self.config["def_media"])
         self.recent_color = self.config["def_color"]
-        self.twitter_session = self.get_session()
+        self.twitter_session = self.__get_session()
         self.is_polling = False
         self.poll_thread = threading.Thread(target=self.twitter_poll)
         self.__start_polling()
     
     def __get_config(self, file_path):
         ''' Reads and validates the config file '''
-        config_requires[("consumer_key", str), ("consumer_secret", str), ("access_token", str), 
+        config_requires = [("consumer_key", str), ("consumer_secret", str), ("access_token", str), 
                     ("access_token_secret", str), ("web_refresh_rate", int), ("twitter_poll_rate", int),
                     ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_color", str)]
         try:
             with open(file_path, 'r') as config_file:
-                config_data = json.loads(config_file)
+                config_data = json.load(config_file)
                 for requirement in config_requires:
                     if not requirement[0] in config_data:
                         self.__config_error("Missing " + requirement[0])
@@ -52,7 +52,7 @@ class Scraper:
 
     def __config_error(self, message):
         ''' Show conf error and exit '''
-        print("[CONFIG ERROR] %s", message)
+        print("[CONFIG ERROR] " + message)
         exit(1)
 
     def __get_session(self):
@@ -66,8 +66,8 @@ class Scraper:
         exit(1)
 
     def __revalidate_session(self):
-        if not self.twitter_session.verify_credentials():
-            self.twitter_session = self.get_session()
+        if self.twitter_session.verify_credentials() == False:
+            self.twitter_session = self.__get_session()
 
     def __fetch_mention(self):
         ''' Gets the most recent mention of scarebot '''
@@ -75,17 +75,17 @@ class Scraper:
         mention = self.twitter_session.mentions_timeline(count=1)
         if len(mention) == 0:
             return None
-        return mention
+        return mention[0]
 
     def __update_color(self, mention):
         ''' Gets color name from mention '''
         if not mention.text == None:
-            mention_words = mention.text.split(' ')
+            mention_words = mention.text.split()
             for word in mention_words:
                 if word.lower() in self.supported_colors:
                     self.recent_color = word.lower()
                     if not word.lower() == self.recent_color:
-                        self.__logger("[COLOR CHANGE] Tweet Author: %s | Color: %s", mention.author.name, word.lower())
+                        self.__logger("[COLOR CHANGE] Tweet Author: "+ mention.author.name +" | Color: "+ word.lower())
                     return
         return
 
@@ -96,12 +96,13 @@ class Scraper:
                     if len(mention.entities["media"]) > 0:
                         if "media_url_https" in mention.entities["media"][0]:
                             url = mention.entities["media"][0].get("media_url_https")
-                            text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
-                            text = nastyword_filter(text)
-                            if not (text, url) == self.recent_image:
-                                self.recent_image = (text, url)
-                                self.__logger("[IMAGE CHANGE] Tweet Author: %s | Tweet Text: %s | Media URL: %s", mention.author.name, mention.text, url)
-                            return
+                            if url.endswith(".jpg") or url.endswith(".png") or url.endswith(".jpeg"):
+                                text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
+                                text = nastyword_filter.censor(text)
+                                if not (text, url) == self.recent_image:
+                                    self.recent_image = (text, url)
+                                    self.__logger("[IMAGE CHANGE] Tweet Author: "+ mention.author.name +" | Tweet Text: "+ mention.text +" | Media URL: "+ url)
+                                return
         return
 
     def __logger(self, message):
@@ -115,16 +116,19 @@ class Scraper:
     def __start_polling(self):
         ''' Starts the poll thread '''
         self.is_polling = True
+        time.sleep(1)
         self.poll_thread.start()
         print("[STATUS] Twitter polling started")
         return
 
     def twitter_poll(self):
         ''' Poll Twitter for Scarebot Mentions '''
-        while self.is_polling:
-            mention = self.__fetch_recent_mention()
-            self.__update_color(mention)
-            self.__update_media(mention)
+        while self.is_polling == True:
+            mention = self.__fetch_mention()
+            if not mention == None:
+                self.__update_color(mention)
+                self.__update_media(mention)
+            print("POLLED")
             time.sleep(int(self.config["twitter_poll_rate"]))
 
     def get_recent_media(self):
@@ -148,7 +152,7 @@ subprocess.Popen("./open-firefox.sh")
 def main():
     print("[REQUEST] Media Requested")
     media = scraper.get_recent_media()
-    return render_template('index.html', imageurl=media[1], tweet=text[0], pagetitle=pagetitle, refresh=scraper.get_web_refresh_rate())
+    return render_template('index.html', imageurl=media[1], tweet=media[0], pagetitle=pagetitle, refresh=(scraper.get_web_refresh_rate() * 1000))
 
 @app.route('/current_color')
 def cur_col():
