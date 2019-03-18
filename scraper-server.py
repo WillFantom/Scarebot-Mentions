@@ -85,7 +85,8 @@ class Scraper:
             for word in mention_words:
                 if word.lower() in self.supported_colors:
                     self.recent_color = word.lower()
-                    self.__logger("[COLOR CHANGE] Tweet Author: %s | Color: %s", mention.author.name, word.lower())
+                    if not word.lower() == self.recent_color:
+                        self.__logger("[COLOR CHANGE] Tweet Author: %s | Color: %s", mention.author.name, word.lower())
                     return
         return
 
@@ -98,8 +99,9 @@ class Scraper:
                             url = mention.entities["media"][0].get("media_url_https")
                             text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
                             text = nastyword_filter(text)
-                            self.recent_image = (text, url)
-                            self.__logger("[IMAGE CHANGE] Tweet Author: %s | Tweet Text: %s | Media URL: %s", mention.author.name, mention.text, url)
+                            if not (text, url) == self.recent_image:
+                                self.recent_image = (text, url)
+                                self.__logger("[IMAGE CHANGE] Tweet Author: %s | Tweet Text: %s | Media URL: %s", mention.author.name, mention.text, url)
                             return
         return
 
