@@ -33,8 +33,7 @@ class Scraper:
         ''' Reads and validates the config file '''
         config_requires[("consumer_key", str), ("consumer_secret", str), ("access_token", str), 
                     ("access_token_secret", str), ("web_refresh_rate", int), ("twitter_poll_rate", int),
-                    ("log_file_path", str), ("error_media_url", str), ("error_text", str), ("def_media", str),
-                    ("def_text", str), ("def_color", str)]
+                    ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_color", str)]
         try:
             with open(file_path, 'r') as config_file:
                 config_data = json.loads(config_file)
@@ -147,8 +146,14 @@ subprocess.Popen("./open-firefox.sh")
 
 @app.route('/')
 def main():
+    print("[REQUEST] Media Requested")
     media = scraper.get_recent_media()
     return render_template('index.html', imageurl=media[1], tweet=text[0], pagetitle=pagetitle, refresh=scraper.get_web_refresh_rate())
+
+@app.route('/current_color')
+def cur_col():
+    print("[REQUEST] Color Requested")
+    return scraper.get_recent_color()
 
 if __name__ == "__main__":
     app.run()

@@ -1,0 +1,8 @@
+{
+    "web_refresh_rate": 10,
+    "twitter_poll_rate": 1,
+    "log_file_path": "/home/pi/Scarebot-Mentions/log.txt",
+    "def_media": "https://",
+    "def_text": "Mention @ScareBot on Twitter",
+    "def_color": "red"
+}
