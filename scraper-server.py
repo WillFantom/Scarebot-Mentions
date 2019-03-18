@@ -59,7 +59,7 @@ class Scraper:
         ''' Return an authed twitter session '''
         auth = tweepy.OAuthHandler(self.config["consumer_key"], self.config["consumer_secret"])
         auth.set_access_token(self.config["access_token"], self.config["access_token_secret"])
-        session = tweepy.API(auth, wait_on_rate_limit=True)
+        session = tweepy.API(auth)
         if session.verify_credentials():
             return session
         print("[SESSION ERROR] Can't load a valid twitter session")
@@ -71,11 +71,14 @@ class Scraper:
 
     def __fetch_mention(self):
         ''' Gets the most recent mention of scarebot '''
-        self.__revalidate_session()
-        mention = self.twitter_session.mentions_timeline(count=1)
-        if len(mention) == 0:
+        try:
+            self.__revalidate_session()
+            mention = self.twitter_session.mentions_timeline(count=1)
+            if len(mention) == 0:
+                return None
+            return mention[0]
+        except:
             return None
-        return mention[0]
 
     def __update_color(self, mention):
         ''' Gets color name from mention '''
@@ -99,7 +102,7 @@ class Scraper:
                             if url.endswith(".jpg") or url.endswith(".png") or url.endswith(".jpeg"):
                                 text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
                                 text = nastyword_filter.censor(text)
-                                if not (text, url) == self.recent_image:
+                                if not url == self.recent_image[1]:
                                     self.recent_image = (text, url)
                                     self.__logger("[IMAGE CHANGE] Tweet Author: "+ mention.author.name +" | Tweet Text: "+ mention.text +" | Media URL: "+ url)
                                 return
@@ -128,7 +131,6 @@ class Scraper:
             if not mention == None:
                 self.__update_color(mention)
                 self.__update_media(mention)
-            print("POLLED")
             time.sleep(int(self.config["twitter_poll_rate"]))
 
     def get_recent_media(self):
