@@ -59,7 +59,7 @@ class Scraper:
         ''' Return an authed twitter session '''
         auth = tweepy.OAuthHandler(self.config["consumer_key"], self.config["consumer_secret"])
         auth.set_access_token(self.config["access_token"], self.config["access_token_secret"])
-        session = tweepy.API(auth)
+        session = tweepy.API(auth, wait_on_rate_limit=True)
         if session.verify_credentials():
             return session
         print("[SESSION ERROR] Can't load a valid twitter session")
