@@ -1,8 +1,14 @@
 {
-    "web_refresh_rate": 10,
-    "twitter_poll_rate": 5,
-    "log_file_path": "",
+    "web_refresh_rate": 31,
+    "twitter_poll_rate": 30,
+    "log_file_path": "log.txt",
     "def_media": "http://www.research.lancs.ac.uk/portal/files/258402241/3016925.jpg",
     "def_text": "Mention @ScareBot on Twitter",
-    "def_color": "red"
+    "def_colors": {
+        "spine": "red",
+        "leftarm": "red",
+        "rightarm": "red",
+        "leftleg": "red",
+        "rightleg": "red"
+    }
 }

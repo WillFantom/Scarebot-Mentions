@@ -4,13 +4,9 @@ import os.path
 import subprocess
 import threading
 import time
-from datetime import datetime
-from profanity_filter import ProfanityFilter
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 
-config_data_path = "./config.json"
-
-nastyword_filter = ProfanityFilter()
+config_data_path = "/home/fantom/Repos-Remote/Scarebot-Mentions/config.json"
 
 app = Flask(__name__)
 pagetitle = "ScareBot"
@@ -21,9 +17,10 @@ class Scraper:
     def __init__(self):
         ''' Create vars for mentions '''
         self.supported_colors = ["red", "green", "blue", "yellow", "pink", "orange", "purple"]
+        self.supported_body_tags = ["spine", "leftleg", "rightleg", "leftarm", "rightarm"]
         self.config = self.__get_config(config_data_path)
         self.recent_image = (self.config["def_text"], self.config["def_media"])
-        self.recent_color = self.config["def_color"]
+        self.recent_color = self.config["def_colors"]
         self.twitter_session = self.__get_session()
         self.is_polling = False
         self.poll_thread = threading.Thread(target=self.twitter_poll)
@@ -33,7 +30,7 @@ class Scraper:
         ''' Reads and validates the config file '''
         config_requires = [("consumer_key", str), ("consumer_secret", str), ("access_token", str), 
                     ("access_token_secret", str), ("web_refresh_rate", int), ("twitter_poll_rate", int),
-                    ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_color", str)]
+                    ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_colors", dict)]
         try:
             with open(file_path, 'r') as config_file:
                 config_data = json.load(config_file)
@@ -44,8 +41,11 @@ class Scraper:
                         self.__config_error("Wrong type " + requirement[0])
                 if not os.path.isfile(config_data["log_file_path"]):
                     self.__config_error("Log file does not exist at path " + config_data["log_file_path"])
-                if not config_data["def_color"] in self.supported_colors:
-                    self.__config_error("Invalid default color " + config_data["def_color"])
+                for p, c in config_data["def_colors"].items():
+                    if not c in self.supported_colors:
+                        self.__config_error("Default colors are not supported")
+                    if not p in self.supported_body_tags:
+                        self.__config_error("Default color limbs are not supported")
                 return config_data
         except:
             self.__config_error("Can't load file " + file_path)
@@ -72,7 +72,7 @@ class Scraper:
     def __fetch_mention(self):
         ''' Gets the most recent mention of scarebot '''
         try:
-            self.__revalidate_session()
+            #self.__revalidate_session()
             mention = self.twitter_session.mentions_timeline(count=1)
             if len(mention) == 0:
                 return None
@@ -84,12 +84,14 @@ class Scraper:
         ''' Gets color name from mention '''
         if not mention.text == None:
             mention_words = mention.text.split()
-            for word in mention_words:
-                if word.lower() in self.supported_colors:
-                    self.recent_color = word.lower()
-                    if not word.lower() == self.recent_color:
-                        self.__logger("[COLOR CHANGE] Tweet Author: "+ mention.author.name +" | Color: "+ word.lower())
-                    return
+            for color in mention_words:
+                if color.lower() in self.supported_colors:
+                    for limb in mention_words:
+                        if limb.lower() in self.supported_body_tags:
+                            self.recent_color[limb.lower()] = color.lower()
+                            if not color.lower() == self.recent_color:
+                                self.__logger("[COLOR CHANGE] Tweet Author: "+ mention.author.name +" | Color: "+ color.lower() + " | Limb: "+limb.lower())
+                            return
         return
 
     def __update_media(self, mention):
@@ -101,7 +103,6 @@ class Scraper:
                             url = mention.entities["media"][0].get("media_url_https")
                             if url.endswith(".jpg") or url.endswith(".png") or url.endswith(".jpeg"):
                                 text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
-                                text = nastyword_filter.censor(text)
                                 if not url == self.recent_image[1]:
                                     self.recent_image = (text, url)
                                     self.__logger("[IMAGE CHANGE] Tweet Author: "+ mention.author.name +" | Tweet Text: "+ mention.text +" | Media URL: "+ url)
@@ -159,7 +160,7 @@ def main():
 @app.route('/current_color')
 def cur_col():
     print("[REQUEST] Color Requested")
-    return scraper.get_recent_color()
+    return jsonify(scraper.get_recent_color())
 
 if __name__ == "__main__":
     app.run()
