@@ -6,7 +6,7 @@ import threading
 import time
 from flask import Flask, render_template, jsonify
 
-config_data_path = "/home/fantom/Repos-Remote/Scarebot-Mentions/config.json"
+config_data_path = "config.json"
 
 app = Flask(__name__)
 pagetitle = "ScareBot"
