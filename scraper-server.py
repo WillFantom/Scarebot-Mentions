@@ -16,11 +16,20 @@ class Scraper:
 
     def __init__(self):
         ''' Create vars for mentions '''
+
+        ## Config
         self.supported_colors = ["red", "green", "blue", "yellow", "pink", "orange", "purple"]
         self.supported_body_tags = ["spine", "leftleg", "rightleg", "leftarm", "rightarm"]
         self.config = self.__get_config(config_data_path)
-        self.recent_image = (self.config["def_text"], self.config["def_media"])
+
+        ## For Media
+        self.media_mentions = [(self.config["def_text"], self.config["def_media"])]
+        self.current_media = self.media_mentions[0]
+
+        ## For Colors
         self.recent_color = self.config["def_colors"]
+
+        ## Setup
         self.twitter_session = self.__get_session()
         self.is_polling = False
         self.poll_thread = threading.Thread(target=self.twitter_poll)
@@ -30,7 +39,8 @@ class Scraper:
         ''' Reads and validates the config file '''
         config_requires = [("consumer_key", str), ("consumer_secret", str), ("access_token", str), 
                     ("access_token_secret", str), ("web_refresh_rate", int), ("twitter_poll_rate", int),
-                    ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_colors", dict)]
+                    ("log_file_path", str), ("def_media", str), ("def_text", str), ("def_colors", dict),
+                    ("recents", int)]
         try:
             with open(file_path, 'r') as config_file:
                 config_data = json.load(config_file)
@@ -57,27 +67,38 @@ class Scraper:
 
     def __get_session(self):
         ''' Return an authed twitter session '''
-        auth = tweepy.OAuthHandler(self.config["consumer_key"], self.config["consumer_secret"])
-        auth.set_access_token(self.config["access_token"], self.config["access_token_secret"])
-        session = tweepy.API(auth)
-        if session.verify_credentials():
-            return session
-        print("[SESSION ERROR] Can't load a valid twitter session")
-        exit(1)
+        session = None
+        while session == None:
+            try:
+                auth = tweepy.OAuthHandler(self.config["consumer_key"], self.config["consumer_secret"])
+                auth.set_access_token(self.config["access_token"], self.config["access_token_secret"])
+                session = tweepy.API(auth)
+                if session.verify_credentials():
+                    return session
+            except:
+                print("[SESSION ERROR] Failed to request a session")
+            print("[SESSION ERROR] Can't load a valid twitter session")
+            session = None
+            time.sleep(int(self.config["twitter_poll_rate"]))
 
     def __revalidate_session(self):
         if self.twitter_session.verify_credentials() == False:
             self.twitter_session = self.__get_session()
 
-    def __fetch_mention(self):
+    def __fetch_mentions(self, revalidate=False):
         ''' Gets the most recent mention of scarebot '''
         try:
-            #self.__revalidate_session()
-            mention = self.twitter_session.mentions_timeline(count=1)
-            if len(mention) == 0:
-                return None
-            return mention[0]
+            if revalidate == True:
+                self.__revalidate_session()
+            print("[TWITTER] Fetching recent mentions")
+            mentions = self.twitter_session.mentions_timeline(count=2)
+            if not mentions == None:
+                if isinstance(mentions, list):
+                    if len(mentions) > 0:
+                        return mentions
+            return None
         except:
+            print("[ERROR] Mention fetch fail")
             return None
 
     def __update_color(self, mention):
@@ -94,20 +115,31 @@ class Scraper:
                             return
         return
 
-    def __update_media(self, mention):
-        if not mention.text == None:
-            if not mention.entities == None:
-                if "media" in mention.entities:
+    def __update_media(self, mentions):
+        ''' Update the current list of media '''
+        for mention in mentions:
+            url = self.__mention_has_media(mention)
+            if not url == None:
+                if not mention.text == None:
+                    text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
+                    if not (text, url) in self.media_mentions:
+                        self.media_mentions.append((text, url))
+                        self.__logger("[MEDIA ADDED] Tweet Author: "+ mention.author.name +" | Tweet: "+ mention.text)
+                        if len(self.media_mentions) > int(self.config["recents"]):
+                            self.media_mentions.pop(0)
+        return
+
+    def __mention_has_media(self, mention):
+        ''' Check if a mention has an image '''
+        if not mention.entities == None:
+            if "media" in mention.entities:
+                if isinstance(mention.entities["media"], list):
                     if len(mention.entities["media"]) > 0:
                         if "media_url_https" in mention.entities["media"][0]:
                             url = mention.entities["media"][0].get("media_url_https")
-                            if url.endswith(".jpg") or url.endswith(".png") or url.endswith(".jpeg"):
-                                text = ' '.join([i for i in mention.text.split() if i != mention.entities["media"][0].get("url")])
-                                if not url == self.recent_image[1]:
-                                    self.recent_image = (text, url)
-                                    self.__logger("[IMAGE CHANGE] Tweet Author: "+ mention.author.name +" | Tweet Text: "+ mention.text +" | Media URL: "+ url)
-                                return
-        return
+                            if url.endswith(".jpg") or url.endswith(".png") or url.endswith(".jpeg") or url.endswith(".gif"):
+                                return url
+        return None
 
     def __logger(self, message):
         try:
@@ -120,23 +152,28 @@ class Scraper:
     def __start_polling(self):
         ''' Starts the poll thread '''
         self.is_polling = True
-        time.sleep(1)
+        print("[STATUS] Twitter polling starting")
         self.poll_thread.start()
-        print("[STATUS] Twitter polling started")
         return
+
+    def __show_default_media(self):
+        if not self.config["def_media"] == self.recent_image[1]: 
+            self.recent_image = (self.config["def_text"], self.config["def_media"])
+            time.sleep(1)
 
     def twitter_poll(self):
         ''' Poll Twitter for Scarebot Mentions '''
         while self.is_polling == True:
-            mention = self.__fetch_mention()
-            if not mention == None:
-                self.__update_color(mention)
-                self.__update_media(mention)
-            time.sleep(int(self.config["twitter_poll_rate"]))
+            mentions = self.__fetch_mentions()
+            if not mentions == None:
+                self.__update_media(mentions)
+            for mention in self.media_mentions:
+                self.current_media = mention
+                time.sleep(float(self.config["twitter_poll_rate"])/int(len(self.media_mentions)))
 
-    def get_recent_media(self):
+    def get_current_media(self):
         ''' Returns most recent media tuple '''
-        return self.recent_image
+        return self.current_media
 
     def get_recent_color(self):
         ''' Returns the most recent color str '''
@@ -154,7 +191,7 @@ subprocess.Popen("./open-firefox.sh")
 @app.route('/')
 def main():
     print("[REQUEST] Media Requested")
-    media = scraper.get_recent_media()
+    media = scraper.get_current_media()
     return render_template('index.html', imageurl=media[1], tweet=media[0], pagetitle=pagetitle, refresh=(scraper.get_web_refresh_rate() * 1000))
 
 @app.route('/current_color')
